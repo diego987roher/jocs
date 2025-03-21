@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia de Països</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        #game-container {
+            background: white;
+            padding: 20px;
+            max-width: 500px;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #scoreboard {
+            margin-top: 20px;
+            text-align: left;
+        }
+        #timer {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h2>Trivia de Països</h2>
+        <p id="difficulty"></p>
+        <p id="question">Carregant pregunta...</p>
+        <p id="timer">Temps restant: 10s</p>
+        <div id="answers"></div>
+        <p id="result"></p>
+        <button onclick="nextQuestion()">Següent pregunta</button>
+        <p>Puntuació: <span id="score">0</span></p>
+        <h3>Taula de classificació</h3>
+        <ul id="scoreboard"></ul>
+    </div>
+
+    <script>
+        let nomUsuari = "";
+        while (!nomUsuari) {
+            nomUsuari = prompt("Escriu el teu nom per començar:");
+        }
+
+        const preguntes = [
+            { pregunta: "Quin és el país més gran del món?", opcions: ["Canadà", "Xina", "Rússia", "Estats Units"], correcta: 2, dificultat: "Fàcil" },
+            { pregunta: "Quina és la capital del Japó?", opcions: ["Seül", "Tòquio", "Bangkok", "Pekín"], correcta: 1, dificultat: "Fàcil" },
+            { pregunta: "Quin país té més illes al món?", opcions: ["Filipines", "Suècia", "Indonèsia", "Noruega"], correcta: 1, dificultat: "Difícil" },
+            { pregunta: "Quina és la moneda de Suïssa?", opcions: ["Euro", "Franc suís", "Lliura", "Dòlar"], correcta: 1, dificultat: "Mitjà" },
+            { pregunta: "En quin país es troba el Machu Picchu?", opcions: ["Mèxic", "Xile", "Perú", "Bolívia"], correcta: 2, dificultat: "Fàcil" }
+            // Afegir fins a 100 preguntes aquí
+        ];
+
+        let preguntesAleatories = [];
+        let preguntaActual = 0;
+        let puntuacio = 0;
+        let temps = 10;
+        let interval;
+
+        function barrejarArray(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function iniciarJoc() {
+            preguntesAleatories = barrejarArray([...preguntes]).slice(0, 10);
+            preguntaActual = 0;
+            puntuacio = 0;
+            document.getElementById("score").textContent = puntuacio;
+            mostrarPregunta();
+        }
+
+        function mostrarPregunta() {
+            if (preguntaActual >= preguntesAleatories.length) {
+                finalitzarJoc();
+                return;
+            }
+            const pregunta = preguntesAleatories[preguntaActual];
+            document.getElementById("question").textContent = pregunta.pregunta;
+            document.getElementById("difficulty").textContent = `Dificultat: ${pregunta.dificultat}`;
+            const answersDiv = document.getElementById("answers");
+            answersDiv.innerHTML = "";
+            pregunta.opcions.forEach((opcio, index) => {
+                const btn = document.createElement("button");
+                btn.textContent = opcio;
+                btn.onclick = () => verificarResposta(index);
+                answersDiv.appendChild(btn);
+            });
+            document.getElementById("result").textContent = "";
+            reiniciarTemporitzador();
+        }
+
+        function verificarResposta(index) {
+            clearInterval(interval);
+            const pregunta = preguntesAleatories[preguntaActual];
+            if (index === pregunta.correcta) {
+                document.getElementById("result").textContent = "✅ Correcte!";
+                puntuacio += 10;
+            } else {
+                document.getElementById("result").textContent = "❌ Incorrecte!";
+            }
+            document.getElementById("score").textContent = puntuacio;
+            preguntaActual++;
+            setTimeout(mostrarPregunta, 1000);
+        }
+
+        function reiniciarTemporitzador() {
+            temps = 10;
+            document.getElementById("timer").textContent = `Temps restant: ${temps}s`;
+            clearInterval(interval);
+            interval = setInterval(() => {
+                temps--;
+                document.getElementById("timer").textContent = `Temps restant: ${temps}s`;
+                if (temps <= 0) {
+                    clearInterval(interval);
+                    document.getElementById("result").textContent = "⏳ Temps esgotat!";
+                    preguntaActual++;
+                    setTimeout(mostrarPregunta, 1000);
+                }
+            }, 1000);
+        }
+
+        function finalitzarJoc() {
+            clearInterval(interval);
+            document.getElementById("question").textContent = "Has acabat la trivia!";
+            document.getElementById("answers").innerHTML = "";
+            document.getElementById("result").textContent = "";
+            guardarPuntuacio();
+        }
+
+        function guardarPuntuacio() {
+            let puntuacions = JSON.parse(localStorage.getItem("puntuacions")) || [];
+            puntuacions.push({ nom: nomUsuari, puntuacio });
+            puntuacions = puntuacions.sort((a, b) => b.puntuacio - a.puntuacio).slice(0, 5); // Top 5
+            localStorage.setItem("puntuacions", JSON.stringify(puntuacions));
+            mostrarTaulaClassificacio();
+        }
+
+        function mostrarTaulaClassificacio() {
+            const puntuacions = JSON.parse(localStorage.getItem("puntuacions")) || [];
+            const scoreboard = document.getElementById("scoreboard");
+            scoreboard.innerHTML = "";
+            puntuacions.forEach((p, index) => {
+                const li = document.createElement("li");
+                li.textContent = `${index + 1}. ${p.nom} - ${p.puntuacio} punts`;
+                scoreboard.appendChild(li);
+            });
+        }
+
+        iniciarJoc();
+        mostrarTaulaClassificacio();
+    </script>
+</body>
+</html>
